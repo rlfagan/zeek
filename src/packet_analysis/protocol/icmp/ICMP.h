@@ -5,10 +5,19 @@
 #include "zeek/packet_analysis/Analyzer.h"
 #include "zeek/packet_analysis/Component.h"
 #include "zeek/packet_analysis/protocol/ip/IPBasedAnalyzer.h"
+#include "zeek/analyzer/Analyzer.h"
+#include "zeek/RuleMatcher.h"
 
-namespace zeek::packet_analysis::ICMP {
+namespace zeek {
 
-class ICMPAnalyzer : public zeek::packet_analysis::IP::IPBasedAnalyzer {
+class VectorVal;
+using VectorValPtr = IntrusivePtr<VectorVal>;
+class RecordVal;
+using RecordValPtr = IntrusivePtr<RecordVal>;
+
+namespace packet_analysis::ICMP {
+
+class ICMPAnalyzer : public IP::IPBasedAnalyzer {
 public:
 	ICMPAnalyzer();
 	~ICMPAnalyzer() override;
@@ -19,6 +28,11 @@ public:
 		{
 		return std::make_shared<ICMPAnalyzer>();
 		}
+
+	void CreateTransportAnalyzer(Connection* conn, IP::IPBasedTransportAnalyzer*& root,
+	                             analyzer::pia::PIA*& pia, bool& check_port) override;
+
+	void UpdateConnVal(RecordVal *conn_val) override;
 
 protected:
 
@@ -31,6 +45,84 @@ protected:
 	 * Returns the transport protocol. Used by NewConn().
 	 */
 	TransportProto GetTransportProto() const override { return TRANSPORT_ICMP; }
+
+	void ContinueProcessing(Connection* c, double t, bool is_orig, int remaining,
+	                        const Packet* pkt) override;
+
+private:
+
+	void ICMP_Sent(const struct icmp* icmpp, int len, int caplen, int icmpv6,
+	               const u_char* data, const IP_Hdr* ip_hdr);
+
+	void Echo(double t, const struct icmp* icmpp, int len,
+			 int caplen, const u_char*& data, const IP_Hdr* ip_hdr);
+	void Redirect(double t, const struct icmp* icmpp, int len,
+			 int caplen, const u_char*& data, const IP_Hdr* ip_hdr);
+	void RouterAdvert(double t, const struct icmp* icmpp, int len,
+			 int caplen, const u_char*& data, const IP_Hdr* ip_hdr);
+	void NeighborAdvert(double t, const struct icmp* icmpp, int len,
+			 int caplen, const u_char*& data, const IP_Hdr* ip_hdr);
+	void NeighborSolicit(double t, const struct icmp* icmpp, int len,
+			 int caplen, const u_char*& data, const IP_Hdr* ip_hdr);
+	void RouterSolicit(double t, const struct icmp* icmpp, int len,
+			 int caplen, const u_char*& data, const IP_Hdr* ip_hdr);
+
+	void Describe(ODesc* d) const;
+
+	RecordValPtr BuildInfo(const struct icmp* icmpp, int len,
+	                       bool icmpv6, const IP_Hdr* ip_hdr);
+
+	void NextICMP4(double t, const struct icmp* icmpp, int len, int caplen,
+	               const u_char*& data, const IP_Hdr* ip_hdr );
+
+	RecordValPtr ExtractICMP4Context(int len, const u_char*& data);
+
+	void Context4(double t, const struct icmp* icmpp, int len, int caplen,
+	              const u_char*& data, const IP_Hdr* ip_hdr);
+
+	TransportProto GetContextProtocol(const IP_Hdr* ip_hdr, uint32_t* src_port,
+	                                  uint32_t* dst_port);
+
+	void NextICMP6(double t, const struct icmp* icmpp, int len, int caplen,
+	               const u_char*& data, const IP_Hdr* ip_hdr );
+
+	RecordValPtr ExtractICMP6Context(int len, const u_char*& data);
+
+	void Context6(double t, const struct icmp* icmpp, int len, int caplen,
+	              const u_char*& data, const IP_Hdr* ip_hdr);
+
+	// RFC 4861 Neighbor Discover message options
+	VectorValPtr BuildNDOptionsVal(int caplen, const u_char* data);
+
+	void UpdateEndpointVal(const ValPtr& endp, bool is_orig);
+
+	// Returns the counterpart type to the given type (e.g., the counterpart
+	// to ICMP_ECHOREPLY is ICMP_ECHO).
+	int ICMP4_counterpart(int icmp_type, int icmp_code, bool& is_one_way);
+	int ICMP6_counterpart(int icmp_type, int icmp_code, bool& is_one_way);
+
+	int type;
+	int code;
+	int request_len, reply_len;
+	Connection* conn = nullptr;
+
+	detail::RuleMatcherState matcher_state;
+	};
+
+class ICMPTransportAnalyzer : public IP::IPBasedTransportAnalyzer {
+
+public:
+
+	ICMPTransportAnalyzer(Connection* conn) :
+		IP::IPBasedTransportAnalyzer("ICMPTransport", conn) { }
+
+	static zeek::analyzer::Analyzer* Instantiate(Connection* conn)
+		{
+		return new ICMPTransportAnalyzer(conn);
+		}
+
+	void AddExtraAnalyzers(Connection* conn) override;
 };
 
-}
+} // namespace packet_analysis::ICMP
+} // namespace zeek
