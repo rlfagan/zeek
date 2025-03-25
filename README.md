@@ -1,6 +1,7 @@
 <h1 align="center">
 
 [![Zeek Logo](https://zeek.org/wp-content/uploads/2020/04/zeek-logo-without-text.png)](https://www.zeek.org)
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Frlfagan%2Fzeek.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Frlfagan%2Fzeek?ref=badge_shield)
 
 The Zeek Network Security Monitor
 
@@ -109,3 +110,7 @@ License
 
 Zeek comes with a BSD license, allowing for free use with virtually no
 restrictions. You can find it [here](https://github.com/zeek/zeek/blob/master/COPYING).
+
+
+## License
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Frlfagan%2Fzeek.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Frlfagan%2Fzeek?ref=badge_large)
